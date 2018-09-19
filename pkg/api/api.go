@@ -31,6 +31,7 @@ type vcsPath struct {
 	vcs    func(module string) vcs.VCS
 }
 
+// Option configures an API handler.
 type Option func(*api)
 
 var (
@@ -40,6 +41,7 @@ var (
 	apiZip  = regexp.MustCompile(`^/(?P<module>.*)/@v/(?P<version>.*).zip$`)
 )
 
+// New returns a configured http.Handler which implements GOPROXY API.
 func New(options ...Option) http.Handler {
 	api := &api{log: func(...interface{}) {}}
 	for _, opt := range options {
@@ -48,8 +50,13 @@ func New(options ...Option) http.Handler {
 	return api
 }
 
+// Log configures API to use a specific logger function, such as log.Println,
+// testing.T.Log or any other custom logger.
 func Log(log logger) Option { return func(api *api) { api.log = log } }
 
+// Git configures API to use a specific git client when trying to download a
+// repository with the given prefix. Auth string can be a path to the SSK key,
+// or a colon-separated username:password string.
 func Git(prefix string, auth string) Option {
 	a := vcs.Key(auth)
 	if creds := strings.SplitN(auth, ":", 2); len(creds) == 2 {
@@ -65,12 +72,14 @@ func Git(prefix string, auth string) Option {
 	}
 }
 
+// Memory configures API to use in-memory cache for downloaded modules.
 func Memory() Option {
 	return func(api *api) {
 		api.stores = append(api.stores, store.Memory())
 	}
 }
 
+// CacheDir configures API to use a local disk storage for downloaded modules.
 func CacheDir(dir string) Option {
 	return func(api *api) {
 		api.stores = append(api.stores, store.Disk(dir))

@@ -30,6 +30,8 @@ type gitVCS struct {
 	auth   Auth
 }
 
+// NewGit return a go-git VCS client implementation that provides information
+// about the specific module using the pgiven authentication mechanism.
 func NewGit(l logger, module string, auth Auth) VCS {
 	return &gitVCS{log: l, module: module, auth: auth}
 }

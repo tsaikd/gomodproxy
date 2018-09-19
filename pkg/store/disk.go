@@ -11,6 +11,7 @@ import (
 
 type disk string
 
+// Disk returns a local disk cache that stores files within a given directory.
 func Disk(dir string) Store { return disk(dir) }
 
 func (d disk) Put(ctx context.Context, snapshot Snapshot) error {

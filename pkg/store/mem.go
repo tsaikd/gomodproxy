@@ -13,6 +13,7 @@ type memory struct {
 	cache []Snapshot
 }
 
+// Memory creates an in-memory cache.
 func Memory() Store { return &memory{} }
 
 func (m *memory) Put(ctx context.Context, snapshot Snapshot) error {

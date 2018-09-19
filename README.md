@@ -1,5 +1,8 @@
 # gomodproxy
 
+[![Build Status](https://travis-ci.org/sixt/gomodproxy.svg?branch=master)](https://travis-ci.org/sixt/gomodproxy)
+[![Go Report Card](https://goreportcard.com/badge/github.com/sixt/gomodproxy)](https://goreportcard.com/report/github.com/sixt/gomodproxy)
+
 gomodproxy is a caching proxy for [Go modules].
 
 Go 1.11 has introduced optional proxy support via GOPROXY environment variable.  It is essential for use cases where you want to have better control over your dependencies and handle scenarios when GitHub is down or some open-source dependency has been removed.

@@ -8,6 +8,11 @@ import (
 	"strings"
 )
 
+var (
+	errPrefixDoesNotMatch = errors.New("prefix does not match the module")
+	errMetaNotFound       = errors.New("go-import meta tag not found")
+)
+
 // MetaImports resolved module import path for certain hosts using the special <meta> tag.
 func MetaImports(ctx context.Context, module string) (string, error) {
 	if strings.HasPrefix(module, "github.com/") || strings.HasPrefix(module, "bitbucket.org/") {
@@ -39,7 +44,7 @@ func MetaImports(ctx context.Context, module string) (string, error) {
 		if meta.Name == "go-import" {
 			if f := strings.Fields(meta.Content); len(f) == 3 {
 				if f[0] != module {
-					return "", errors.New("prefix does not match the module")
+					return "", errPrefixDoesNotMatch
 				}
 				url := f[2]
 				if i := strings.Index(url, "://"); i >= 0 {
@@ -49,5 +54,5 @@ func MetaImports(ctx context.Context, module string) (string, error) {
 			}
 		}
 	}
-	return "", errors.New("go-import meta tag not found")
+	return "", errMetaNotFound
 }

@@ -77,7 +77,7 @@ func main() {
 	}
 
 	for _, path := range gitPaths {
-		kv := strings.SplitN(path, "=", 2)
+		kv := strings.SplitN(path, ":", 2)
 		if len(kv) != 2 {
 			log.Fatal("bad git path:", path)
 		}

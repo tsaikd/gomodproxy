@@ -1,7 +1,7 @@
 module github.com/sixt/gomodproxy
 
 require (
-	github.com/emirpasic/gods v1.9.0 // indirect
+	github.com/emirpasic/gods v1.11.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/kevinburke/ssh_config v0.0.0-20180830205328-81db2a75821e // indirect
 	github.com/mitchellh/go-homedir v1.0.0 // indirect

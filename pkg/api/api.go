@@ -73,9 +73,9 @@ func Git(prefix string, auth string) Option {
 }
 
 // Memory configures API to use in-memory cache for downloaded modules.
-func Memory() Option {
+func Memory(log logger, limit int64) Option {
 	return func(api *api) {
-		api.stores = append(api.stores, store.Memory())
+		api.stores = append(api.stores, store.Memory(log, limit))
 	}
 }
 

@@ -15,6 +15,9 @@ import (
 	"time"
 
 	"github.com/sixt/gomodproxy/pkg/api"
+
+	_ "expvar"
+	_ "net/http/pprof"
 )
 
 func prettyLog(v ...interface{}) {
@@ -53,6 +56,7 @@ func main() {
 
 	addr := flag.String("addr", ":0", "http server address")
 	verbose := flag.Bool("v", false, "verbose logging")
+	debug := flag.Bool("debug", false, "enable debug HTTP API (pprof/expvar)")
 	json := flag.Bool("json", false, "json structured logging")
 	dir := flag.String("dir", filepath.Join(os.Getenv("HOME"), ".gomodproxy"), "cache directory")
 	memLimit := flag.Int64("mem", 256, "in-memory cache size in MB")
@@ -69,7 +73,7 @@ func main() {
 	fmt.Println("Listening on", ln.Addr())
 
 	options := []api.Option{}
-	var logger func(...interface{})
+	logger := func(...interface{}) {}
 	if *verbose || *json {
 		if *json {
 			logger = jsonLog
@@ -95,7 +99,17 @@ func main() {
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt)
 
-	srv := &http.Server{Handler: api.New(options...)}
+	mux := http.NewServeMux()
+	mux.Handle("/", api.New(options...))
+	if *debug {
+		mux.Handle("/debug/vars", http.DefaultServeMux)
+		mux.Handle("/debug/pprof/heap", http.DefaultServeMux)
+		mux.Handle("/debug/pprof/profile", http.DefaultServeMux)
+		mux.Handle("/debug/pprof/block", http.DefaultServeMux)
+		mux.Handle("/debug/pprof/trace", http.DefaultServeMux)
+	}
+
+	srv := &http.Server{Handler: mux}
 	go func() {
 		if err := srv.Serve(ln); err != nil {
 			log.Fatal(err)

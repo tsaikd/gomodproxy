@@ -7,6 +7,8 @@ import (
 	"github.com/sixt/gomodproxy/pkg/vcs"
 )
 
+type logger = func(...interface{})
+
 // Store is an interface for a typical cache. It allows to put a snapshot and
 // to get snapshot of the specific version.
 type Store interface {

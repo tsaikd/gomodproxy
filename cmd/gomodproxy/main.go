@@ -55,6 +55,7 @@ func main() {
 	verbose := flag.Bool("v", false, "verbose logging")
 	json := flag.Bool("json", false, "json structured logging")
 	dir := flag.String("dir", filepath.Join(os.Getenv("HOME"), ".gomodproxy"), "cache directory")
+	memLimit := flag.Int64("mem", 256, "in-memory cache size in MB")
 	flag.Var(&gitPaths, "git", "list of git settings")
 
 	flag.Parse()
@@ -68,13 +69,15 @@ func main() {
 	fmt.Println("Listening on", ln.Addr())
 
 	options := []api.Option{}
+	var logger func(...interface{})
 	if *verbose || *json {
 		if *json {
-			options = append(options, api.Log(jsonLog))
+			logger = jsonLog
 		} else {
-			options = append(options, api.Log(prettyLog))
+			logger = prettyLog
 		}
 	}
+	options = append(options, api.Log(logger))
 
 	for _, path := range gitPaths {
 		kv := strings.SplitN(path, "=", 2)
@@ -84,7 +87,10 @@ func main() {
 		options = append(options, api.Git(kv[0], kv[1]))
 	}
 
-	options = append(options, api.Memory(), api.CacheDir(*dir))
+	options = append(options,
+		api.Memory(logger, *memLimit*1024*1024),
+		api.CacheDir(*dir),
+	)
 
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt)

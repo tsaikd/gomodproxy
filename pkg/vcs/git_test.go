@@ -66,7 +66,7 @@ func TestGit(t *testing.T) {
 		auth := NoAuth()
 		if test.Tag != "" {
 			t.Run(test.Module+"/List", func(t *testing.T) {
-				git := NewGit(t.Log, test.Module, auth)
+				git := NewGit(t.Log, "", test.Module, auth)
 				list, err := git.List(context.Background())
 				if err != nil {
 					t.Fatal(err)
@@ -81,7 +81,7 @@ func TestGit(t *testing.T) {
 		}
 		if test.Timestamp != "" {
 			t.Run(test.Module+"/Timestamp", func(t *testing.T) {
-				git := NewGit(t.Log, test.Module, auth)
+				git := NewGit(t.Log, "", test.Module, auth)
 				timestamp, err := git.Timestamp(context.Background(), Version(test.Tag))
 				if err != nil {
 					t.Fatal(err)
@@ -93,7 +93,7 @@ func TestGit(t *testing.T) {
 		}
 		if test.Checksum != "" {
 			t.Run(test.Module+"/ZIP", func(t *testing.T) {
-				git := NewGit(t.Log, test.Module, auth)
+				git := NewGit(t.Log, "", test.Module, auth)
 				r, err := git.Zip(context.Background(), Version(test.Tag))
 				if err != nil {
 					t.Fatal(err)

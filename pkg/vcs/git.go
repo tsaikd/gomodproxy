@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -26,14 +27,15 @@ const remoteName = "origin"
 
 type gitVCS struct {
 	log    logger
+	dir    string
 	module string
 	auth   Auth
 }
 
 // NewGit return a go-git VCS client implementation that provides information
 // about the specific module using the pgiven authentication mechanism.
-func NewGit(l logger, module string, auth Auth) VCS {
-	return &gitVCS{log: l, module: module, auth: auth}
+func NewGit(l logger, dir string, module string, auth Auth) VCS {
+	return &gitVCS{log: l, dir: dir, module: module, auth: auth}
 }
 
 func (g *gitVCS) List(ctx context.Context) ([]Version, error) {
@@ -142,8 +144,18 @@ func (g *gitVCS) Zip(ctx context.Context, version Version) (io.ReadCloser, error
 	return ioutil.NopCloser(bytes.NewBuffer(b.Bytes())), nil
 }
 
-func (g *gitVCS) repo(ctx context.Context) (*git.Repository, error) {
-	repo, err := git.Init(memory.NewStorage(), nil)
+func (g *gitVCS) repo(ctx context.Context) (repo *git.Repository, err error) {
+	if g.dir != "" {
+		dir := filepath.Join(g.dir, g.module)
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			os.MkdirAll(dir, 0755)
+			repo, err = git.PlainInit(dir, true)
+		} else {
+			return git.PlainOpen(dir)
+		}
+	} else {
+		repo, err = git.Init(memory.NewStorage(), nil)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +187,7 @@ func (g *gitVCS) commit(ctx context.Context, version Version) (*object.Commit, e
 		RemoteName: remoteName,
 		Auth:       auth,
 	})
-	if err != nil {
+	if err != nil && err != git.NoErrAlreadyUpToDate {
 		return nil, err
 	}
 

@@ -22,6 +22,7 @@ type logger = func(v ...interface{})
 
 type api struct {
 	log      logger
+	gitdir   string
 	vcsPaths []vcsPath
 	stores   []store.Store
 }
@@ -54,6 +55,9 @@ func New(options ...Option) http.Handler {
 // testing.T.Log or any other custom logger.
 func Log(log logger) Option { return func(api *api) { api.log = log } }
 
+// GitDir configures API to use a specific directory for bare git repos.
+func GitDir(dir string) Option { return func(api *api) { api.gitdir = dir } }
+
 // Git configures API to use a specific git client when trying to download a
 // repository with the given prefix. Auth string can be a path to the SSK key,
 // or a colon-separated username:password string.
@@ -66,7 +70,7 @@ func Git(prefix string, auth string) Option {
 		api.vcsPaths = append(api.vcsPaths, vcsPath{
 			prefix: prefix,
 			vcs: func(module string) vcs.VCS {
-				return vcs.NewGit(api.log, module, a)
+				return vcs.NewGit(api.log, api.gitdir, module, a)
 			},
 		})
 	}
@@ -137,7 +141,7 @@ func (api *api) vcs(ctx context.Context, module string) vcs.VCS {
 			return path.vcs(module)
 		}
 	}
-	return vcs.NewGit(api.log, module, vcs.NoAuth())
+	return vcs.NewGit(api.log, api.gitdir, module, vcs.NoAuth())
 }
 
 func (api *api) module(ctx context.Context, module string, version vcs.Version) ([]byte, time.Time, error) {

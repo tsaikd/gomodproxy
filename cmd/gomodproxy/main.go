@@ -58,7 +58,8 @@ func main() {
 	verbose := flag.Bool("v", false, "verbose logging")
 	debug := flag.Bool("debug", false, "enable debug HTTP API (pprof/expvar)")
 	json := flag.Bool("json", false, "json structured logging")
-	dir := flag.String("dir", filepath.Join(os.Getenv("HOME"), ".gomodproxy"), "cache directory")
+	dir := flag.String("dir", filepath.Join(os.Getenv("HOME"), ".gomodproxy/cache"), "modules cache directory")
+	gitdir := flag.String("gitdir", filepath.Join(os.Getenv("HOME"), ".gomodproxy/git"), "git cache directory")
 	memLimit := flag.Int64("mem", 256, "in-memory cache size in MB")
 	flag.Var(&gitPaths, "git", "list of git settings")
 
@@ -92,6 +93,7 @@ func main() {
 	}
 
 	options = append(options,
+		api.GitDir(*gitdir),
 		api.Memory(logger, *memLimit*1024*1024),
 		api.CacheDir(*dir),
 	)

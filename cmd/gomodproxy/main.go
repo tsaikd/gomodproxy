@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -13,12 +14,55 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/sixt/gomodproxy/pkg/api"
 
-	_ "expvar"
+	"expvar"
 	_ "net/http/pprof"
 )
+
+func prometheusExpose(w io.Writer, name string, v interface{}) {
+	// replace all invalid symbols with underscores
+	name = strings.Map(func(r rune) rune {
+		r = unicode.ToLower(r)
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			return r
+		}
+		return '_'
+	}, name)
+	// expvar does not have concepts of counters and gauges,
+	// so we tell one from another based on the name suffix.
+	counter := strings.HasSuffix(name, "_total")
+	if f, ok := v.(float64); ok {
+		if counter {
+			fmt.Fprintf(w, "# TYPE %s counter\n", name)
+		} else {
+			fmt.Fprintf(w, "# TYPE %s gauge\n", name)
+		}
+		fmt.Fprintf(w, "%s %f\n", name, f)
+	} else if m, ok := v.(map[string]interface{}); ok {
+		for k, v := range m {
+			// for composite maps we construct metric names by joining the parent map
+			// name and the key name.
+			s := strings.TrimSuffix(name, "_total") + "_" + k
+			if counter {
+				s = s + "_total"
+			}
+			prometheusExpose(w, s, v)
+		}
+	}
+}
+
+func prometheusHandler(w http.ResponseWriter, r *http.Request) {
+	expvar.Do(func(kv expvar.KeyValue) {
+		var v interface{}
+		if err := json.Unmarshal([]byte(kv.Value.String()), &v); err != nil {
+			return
+		}
+		prometheusExpose(w, kv.Key, v)
+	})
+}
 
 func prettyLog(v ...interface{}) {
 	s := ""
@@ -56,6 +100,7 @@ func main() {
 
 	addr := flag.String("addr", ":0", "http server address")
 	verbose := flag.Bool("v", false, "verbose logging")
+	prometheus := flag.String("prometheus", "", "prometheus address")
 	debug := flag.Bool("debug", false, "enable debug HTTP API (pprof/expvar)")
 	json := flag.Bool("json", false, "json structured logging")
 	dir := flag.String("dir", filepath.Join(os.Getenv("HOME"), ".gomodproxy/cache"), "modules cache directory")
@@ -103,6 +148,14 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.Handle("/", api.New(options...))
+	if *prometheus != "" {
+		if *prometheus == *addr {
+			mux.HandleFunc("/metrics", prometheusHandler)
+		} else {
+			srv := &http.Server{Handler: http.HandlerFunc(prometheusHandler), Addr: *prometheus}
+			go srv.ListenAndServe()
+		}
+	}
 	if *debug {
 		mux.Handle("/debug/vars", http.DefaultServeMux)
 		mux.Handle("/debug/pprof/heap", http.DefaultServeMux)

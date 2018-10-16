@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"expvar"
 	"fmt"
 	"io"
 	"net/http"
@@ -40,6 +41,14 @@ var (
 	apiInfo = regexp.MustCompile(`^/(?P<module>.*)/@v/(?P<version>.*).info$`)
 	apiMod  = regexp.MustCompile(`^/(?P<module>.*)/@v/(?P<version>.*).mod$`)
 	apiZip  = regexp.MustCompile(`^/(?P<module>.*)/@v/(?P<version>.*).zip$`)
+)
+
+var (
+	cacheHits            = expvar.NewMap("cache_hits_total")
+	cacheMisses          = expvar.NewMap("cache_misses_total")
+	httpRequests         = expvar.NewMap("http_requests_total")
+	httpErrors           = expvar.NewMap("http_errors_total")
+	httpRequestDurations = expvar.NewMap("http_request_duration_seconds")
 )
 
 // New returns a configured http.Handler which implements GOPROXY API.
@@ -113,13 +122,14 @@ func (api *api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() { api.log("api.ServeHTTP", "method", r.Method, "url", r.URL, "time", time.Since(now)) }()
 
 	for _, route := range []struct {
+		id      string
 		regexp  *regexp.Regexp
 		handler func(w http.ResponseWriter, r *http.Request, module, version string)
 	}{
-		{apiList, api.list},
-		{apiInfo, api.info},
-		{apiMod, api.mod},
-		{apiZip, api.zip},
+		{"list", apiList, api.list},
+		{"info", apiInfo, api.info},
+		{"api", apiMod, api.mod},
+		{"zip", apiZip, api.zip},
 	} {
 		if m := route.regexp.FindStringSubmatch(r.URL.Path); m != nil {
 			module, version := m[1], ""
@@ -127,11 +137,18 @@ func (api *api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				version = m[2]
 			}
 			module = decodeBangs(module)
+			httpRequests.Add(route.id, 1)
+			defer func() {
+				v := &expvar.Float{}
+				v.Set(time.Since(now).Seconds())
+				httpRequestDurations.Set(route.id, v)
+			}()
 			route.handler(w, r, module, version)
 			return
 		}
 	}
 
+	httpRequests.Add("not_found", 1)
 	http.NotFound(w, r)
 }
 
@@ -147,9 +164,11 @@ func (api *api) vcs(ctx context.Context, module string) vcs.VCS {
 func (api *api) module(ctx context.Context, module string, version vcs.Version) ([]byte, time.Time, error) {
 	for _, store := range api.stores {
 		if snapshot, err := store.Get(ctx, module, version); err == nil {
+			cacheHits.Add(module, 1)
 			return snapshot.Data, snapshot.Timestamp, nil
 		}
 	}
+	cacheMisses.Add(module, 1)
 
 	timestamp, err := api.vcs(ctx, module).Timestamp(ctx, version)
 	if err != nil {
@@ -187,6 +206,7 @@ func (api *api) list(w http.ResponseWriter, r *http.Request, module, version str
 	list, err := api.vcs(r.Context(), module).List(r.Context())
 	if err != nil {
 		api.log("api.list", "module", module, "error", err)
+		httpErrors.Add(module, 1)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -202,6 +222,7 @@ func (api *api) info(w http.ResponseWriter, r *http.Request, module, version str
 
 	if err != nil {
 		api.log("api.info", "module", module, "version", version, "error", err)
+		httpErrors.Add(module, 1)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -236,6 +257,7 @@ func (api *api) zip(w http.ResponseWriter, r *http.Request, module, version stri
 	b, _, err := api.module(r.Context(), module, vcs.Version(version))
 	if err != nil {
 		api.log("api.zip", "module", module, "version", version, "error", err)
+		httpErrors.Add(module, 1)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

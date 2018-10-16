@@ -2,7 +2,9 @@ language: go
 go:
   - "1.x"
 
-env: GO111MODULE=on
+env:
+  - GO111MODULE=on
+  - CGO_ENABLED=0
 
 install:
   - go mod download
@@ -10,3 +12,11 @@ install:
 script:
   - go build ./cmd/gomodproxy
   - go test -race -v ./...
+
+deploy:
+  provider: script
+  script:
+    - printf 'FROM scratch\nADD gomodproxy /\nCMD ["/gomodproxy"]' > Dockerfile
+    - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+    - docker build -t "sixt/gomodproxy" .
+    - docker push "sixt/gomodproxy"

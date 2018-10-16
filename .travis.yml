@@ -9,7 +9,7 @@ install:
 
 script:
   - go build ./cmd/gomodproxy
-  - go test -race -v ./...
+  - go test -v ./...
 
 deploy:
   provider: script

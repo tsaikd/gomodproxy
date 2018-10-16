@@ -2,9 +2,7 @@ language: go
 go:
   - "1.x"
 
-env:
-  - GO111MODULE=on
-  - CGO_ENABLED=0
+env: GO111MODULE=on CGO_ENABLED=0
 
 install:
   - go mod download

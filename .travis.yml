@@ -11,10 +11,12 @@ script:
   - go build ./cmd/gomodproxy
   - go test -v ./...
 
-deploy:
-  provider: script
-  script:
-    - printf 'FROM scratch\nADD gomodproxy /\nCMD ["/gomodproxy"]' > Dockerfile
-    - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-    - docker build -t "sixt/gomodproxy" .
-    - docker push "sixt/gomodproxy"
+after_success:
+  - printf 'FROM scratch\nADD gomodproxy /\nCMD ["/gomodproxy"]' > Dockerfile
+  - docker build -t "sixt/gomodproxy:latest" .
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+  - docker push "sixt/gomodproxy:latest"
+  - if [ ! -z $TRAVIS_TAG ] ; then
+      docker tag sixt/gomodproxy:latest sixt/gomodproxy:$TRAVIS_TAG
+      docker push sixt/gomodproxy:$TRAVIS_TAG
+    fi

@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/sixt/gomodproxy.svg?branch=master)](https://travis-ci.org/sixt/gomodproxy)
 [![Go Report Card](https://goreportcard.com/badge/github.com/sixt/gomodproxy)](https://goreportcard.com/report/github.com/sixt/gomodproxy)
+[![Docker Hub](https://images.microbadger.com/badges/image/sixtlabs/gomodproxy.svg)](https://hub.docker.com/r/sixtlabs/gomodproxy/)
 
 gomodproxy is a caching proxy for [Go modules].
 

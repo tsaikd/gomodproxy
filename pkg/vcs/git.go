@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -29,6 +30,7 @@ type gitVCS struct {
 	log    logger
 	dir    string
 	module string
+	prefix string
 	auth   Auth
 }
 
@@ -62,12 +64,16 @@ func (g *gitVCS) List(ctx context.Context) ([]Version, error) {
 
 	list := []Version{}
 	masterHash := ""
+	tagPrefix := ""
+	if g.prefix != "" {
+		tagPrefix = g.prefix + "/"
+	}
 	for _, ref := range refs {
 		name := ref.Name()
 		if name == plumbing.Master {
 			masterHash = ref.Hash().String()
-		} else if name.IsTag() && strings.HasPrefix(name.String(), "refs/tags/v") {
-			list = append(list, Version(strings.TrimPrefix(name.String(), "refs/tags/")))
+		} else if name.IsTag() && strings.HasPrefix(name.String(), "refs/tags/"+tagPrefix+"v") {
+			list = append(list, Version(strings.TrimPrefix(name.String(), "refs/tags/"+tagPrefix)))
 		}
 	}
 
@@ -122,31 +128,70 @@ func (g *gitVCS) Zip(ctx context.Context, version Version) (io.ReadCloser, error
 
 	b := &bytes.Buffer{}
 	zw := zip.NewWriter(b)
+	modules := map[string]bool{}
+	files := []*object.File{}
 	tree.Files().ForEach(func(f *object.File) error {
+		dir, file := path.Split(f.Name)
+		if file == "go.mod" {
+			modules[dir] = true
+		}
+		files = append(files, f)
+		return nil
+	})
+	prefix := g.prefix
+	if prefix != "" {
+		prefix = prefix + "/"
+	}
+	submodule := func(name string) bool {
+		for {
+			dir, _ := path.Split(name)
+			if len(dir) <= len(prefix) {
+				return false
+			}
+			if modules[dir] {
+				return true
+			}
+			name = dir[:len(dir)-1]
+		}
+	}
+	for _, f := range files {
 		// go mod strips vendored directories from the zip, and we do the same
 		// to match the checksums in the go.sum
 		if isVendoredPackage(f.Name) {
-			return nil
+			continue
 		}
-		w, err := zw.Create(filepath.Join(g.module+"@"+string(version), f.Name))
+		if submodule(f.Name) {
+			continue
+		}
+		name := f.Name
+		if strings.HasPrefix(name, prefix) {
+			name = strings.TrimPrefix(name, prefix)
+		} else {
+			continue
+		}
+		w, err := zw.Create(filepath.Join(g.module+"@"+string(version), name))
 		if err != nil {
-			return err
+			return nil, err
 		}
 		r, err := f.Reader()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		defer r.Close()
 		io.Copy(w, r)
-		return nil
-	})
+	}
 	zw.Close()
 	return ioutil.NopCloser(bytes.NewBuffer(b.Bytes())), nil
 }
 
 func (g *gitVCS) repo(ctx context.Context) (repo *git.Repository, err error) {
+	repoRoot, path, err := RepoRoot(ctx, g.module)
+	if err != nil {
+		return nil, err
+	}
+	g.prefix = path
 	if g.dir != "" {
-		dir := filepath.Join(g.dir, g.module)
+		dir := filepath.Join(g.dir, repoRoot)
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
 			os.MkdirAll(dir, 0755)
 			repo, err = git.PlainInit(dir, true)
@@ -163,10 +208,7 @@ func (g *gitVCS) repo(ctx context.Context) (repo *git.Repository, err error) {
 	if g.auth.Key != "" {
 		schema = "ssh://"
 	}
-	repoRoot := g.module
-	if meta, err := MetaImports(ctx, g.module); err == nil {
-		repoRoot = meta
-	}
+	g.log("repo", "url", schema+repoRoot+".git", "prefix", g.prefix)
 	_, err = repo.CreateRemote(&config.RemoteConfig{
 		Name: remoteName,
 		URLs: []string{schema + repoRoot + ".git"},

@@ -13,15 +13,20 @@ var (
 	errMetaNotFound       = errors.New("go-import meta tag not found")
 )
 
-// MetaImports resolved module import path for certain hosts using the special <meta> tag.
-func MetaImports(ctx context.Context, module string) (string, error) {
+func RepoRoot(ctx context.Context, module string) (root string, path string, err error) {
+	// For common VCS hosters we can figure out repo root by the URL
 	if strings.HasPrefix(module, "github.com/") || strings.HasPrefix(module, "bitbucket.org/") {
-		return module, nil
+		parts := strings.Split(module, "/")
+		if len(parts) < 3 {
+			return "", "", errors.New("bad module name")
+		}
+		return strings.Join(parts[0:3], "/"), strings.Join(parts[3:], "/"), nil
 	}
+	// Otherwise we shall make a `?go-get=1` HTTP request
 	// TODO: use context
 	res, err := http.Get("https://" + module + "?go-get=1")
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	defer res.Body.Close()
 	html := struct {
@@ -38,21 +43,19 @@ func MetaImports(ctx context.Context, module string) (string, error) {
 	dec.AutoClose = xml.HTMLAutoClose
 	dec.Entity = xml.HTMLEntity
 	if err := dec.Decode(&html); err != nil {
-		return "", err
+		return "", "", err
 	}
 	for _, meta := range html.Head.Meta {
 		if meta.Name == "go-import" {
 			if f := strings.Fields(meta.Content); len(f) == 3 {
-				if f[0] != module {
-					return "", errPrefixDoesNotMatch
-				}
 				url := f[2]
 				if i := strings.Index(url, "://"); i >= 0 {
 					url = url[i+3:]
 				}
-				return url, nil
+				path = strings.TrimPrefix(strings.TrimPrefix(module, f[0]), "/")
+				return url, path, nil
 			}
 		}
 	}
-	return "", errMetaNotFound
+	return "", "", errMetaNotFound
 }

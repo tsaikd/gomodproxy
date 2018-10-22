@@ -53,6 +53,20 @@ func TestGit(t *testing.T) {
 			Checksum:  "YIusKhLwlEKiuwowBFdEElpP0hIGDOCaSnQaMufLB00=",
 		},
 		{
+			// Repository that contains go.mod
+			Module:    "bitbucket.org/gomodproxytest/nested",
+			Tag:       "v1.0.0",
+			Timestamp: "2018-10-18",
+			Checksum:  "rFPd/yPMmhjy4FdmLTySAHVcjHmZh/XP3xNrHKLiFss=",
+		},
+		{
+			// Submodule that contains its own go.mod and tag
+			Module:    "bitbucket.org/gomodproxytest/nested/child",
+			Tag:       "v1.0.0",
+			Timestamp: "2018-10-18",
+			Checksum:  "RN9U68h7BnmrsLP24VM37/Zeyb+21R8KmGZtxTUBd74=",
+		},
+		{
 			// Just a frequently used module from github
 			Module:    "github.com/pkg/errors",
 			Tag:       "v0.8.0",

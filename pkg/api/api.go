@@ -26,6 +26,7 @@ type api struct {
 	gitdir   string
 	vcsPaths []vcsPath
 	stores   []store.Store
+	semc     chan struct{}
 }
 
 type vcsPath struct {
@@ -53,7 +54,7 @@ var (
 
 // New returns a configured http.Handler which implements GOPROXY API.
 func New(options ...Option) http.Handler {
-	api := &api{log: func(...interface{}) {}}
+	api := &api{log: func(...interface{}) {}, semc: make(chan struct{}, 1)}
 	for _, opt := range options {
 		opt(api)
 	}
@@ -96,6 +97,15 @@ func Memory(log logger, limit int64) Option {
 func CacheDir(dir string) Option {
 	return func(api *api) {
 		api.stores = append(api.stores, store.Disk(dir))
+	}
+}
+
+// VCSWorkers configures API to use at most n parallel workers when fetching
+// from the VCS. The reason to restrict number of workers is to limit their
+// memory usage.
+func VCSWorkers(n int) Option {
+	return func(api *api) {
+		api.semc = make(chan struct{}, n)
 	}
 }
 
@@ -169,6 +179,10 @@ func (api *api) module(ctx context.Context, module string, version vcs.Version) 
 		}
 	}
 	cacheMisses.Add(module, 1)
+
+	// wait for semaphore
+	api.semc <- struct{}{}
+	defer func() { <-api.semc }()
 
 	timestamp, err := api.vcs(ctx, module).Timestamp(ctx, version)
 	if err != nil {

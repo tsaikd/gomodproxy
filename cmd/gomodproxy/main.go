@@ -106,6 +106,7 @@ func main() {
 	dir := flag.String("dir", filepath.Join(os.Getenv("HOME"), ".gomodproxy/cache"), "modules cache directory")
 	gitdir := flag.String("gitdir", filepath.Join(os.Getenv("HOME"), ".gomodproxy/git"), "git cache directory")
 	memLimit := flag.Int64("mem", 256, "in-memory cache size in MB")
+	workers := flag.Int("workers", 1, "number of parallel VCS workers")
 	flag.Var(&gitPaths, "git", "list of git settings")
 
 	flag.Parse()
@@ -138,6 +139,7 @@ func main() {
 	}
 
 	options = append(options,
+		api.VCSWorkers(*workers),
 		api.GitDir(*gitdir),
 		api.Memory(logger, *memLimit*1024*1024),
 		api.CacheDir(*dir),

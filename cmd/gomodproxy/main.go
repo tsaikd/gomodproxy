@@ -97,6 +97,7 @@ func (f *listFlag) Set(s string) error { *f = append(*f, s); return nil }
 
 func main() {
 	gitPaths := listFlag{}
+	vcsPaths := listFlag{}
 
 	addr := flag.String("addr", ":0", "http server address")
 	verbose := flag.Bool("v", false, "verbose logging")
@@ -108,6 +109,7 @@ func main() {
 	memLimit := flag.Int64("mem", 256, "in-memory cache size in MB")
 	workers := flag.Int("workers", 1, "number of parallel VCS workers")
 	flag.Var(&gitPaths, "git", "list of git settings")
+	flag.Var(&vcsPaths, "vcs", "list of custom VCS handlers")
 
 	flag.Parse()
 
@@ -129,6 +131,14 @@ func main() {
 		}
 	}
 	options = append(options, api.Log(logger))
+
+	for _, path := range vcsPaths {
+		kv := strings.SplitN(path, ":", 2)
+		if len(kv) != 2 {
+			log.Fatal("bad VCS syntax:", path)
+		}
+		options = append(options, api.CustomVCS(kv[0], kv[1]))
+	}
 
 	for _, path := range gitPaths {
 		kv := strings.SplitN(path, ":", 2)

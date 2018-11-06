@@ -86,6 +86,17 @@ func Git(prefix string, auth string) Option {
 	}
 }
 
+func CustomVCS(prefix string, cmd string) Option {
+	return func(api *api) {
+		api.vcsPaths = append(api.vcsPaths, vcsPath{
+			prefix: prefix,
+			vcs: func(module string) vcs.VCS {
+				return vcs.NewCommand(api.log, cmd, module)
+			},
+		})
+	}
+}
+
 // Memory configures API to use in-memory cache for downloaded modules.
 func Memory(log logger, limit int64) Option {
 	return func(api *api) {

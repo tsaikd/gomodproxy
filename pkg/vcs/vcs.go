@@ -27,6 +27,11 @@ func (v Version) Hash() string {
 	return fields[2]
 }
 
+// String returns a string representation of a version
+func (v Version) String() string {
+	return string(v)
+}
+
 // Module is a source code snapshot for which one can get the commit timestamp
 // or the actual ZIP with the source code in it.
 type Module interface {

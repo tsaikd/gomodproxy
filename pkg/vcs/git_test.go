@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -73,12 +74,19 @@ func TestGit(t *testing.T) {
 			Timestamp: "2016-09-29",
 			Checksum:  "WdK/asTD0HN+q6hsWO3/vpuAkAr+tw6aNJNDFFf0+qw=",
 		},
+		{
+			// A module with symlinks, should match Go 1.11.4 algorithm fix
+			Module:    "github.com/hashicorp/go-rootcerts",
+			Tag:       "v0.0.0-20160503143440-6bb64b370b90",
+			Timestamp: "2016-05-03",
+			Checksum:  "VBj0QYQ0u2MCJzBfeYXGexnAl17GsH1yidnoxCqqD9E=",
+		},
 	} {
 		if test.Module == "" {
 			continue
 		}
 		auth := NoAuth()
-		if test.Tag != "" {
+		if test.Tag != "" && !strings.HasPrefix(test.Tag, "v0.0.0-") {
 			t.Run(test.Module+"/List", func(t *testing.T) {
 				git := NewGit(t.Log, "", test.Module, auth)
 				list, err := git.List(context.Background())

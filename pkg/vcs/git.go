@@ -163,6 +163,9 @@ func (g *gitVCS) Zip(ctx context.Context, version Version) (io.ReadCloser, error
 		if submodule(f.Name) {
 			continue
 		}
+		if !f.Mode.IsRegular() {
+			continue
+		}
 		name := f.Name
 		if strings.HasPrefix(name, prefix) {
 			name = strings.TrimPrefix(name, prefix)

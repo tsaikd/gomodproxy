@@ -13,6 +13,15 @@ script:
 
 after_success:
   - printf 'FROM scratch\nADD gomodproxy /\nCMD ["/gomodproxy"]' > Dockerfile
+  - docker build -t "sixtlabs/gomodproxy-slim:latest" .
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+  - docker push "sixtlabs/gomodproxy-slim:latest"
+  - if [ ! -z $TRAVIS_TAG ] ; then
+      TAG=$(echo $TRAVIS_TAG | sed 's/^v//');
+      docker tag sixtlabs/gomodproxy-slim:latest sixtlabs/gomodproxy-slim:$TAG;
+      docker push sixtlabs/gomodproxy-slim:$TAG;
+    fi
+  - printf 'FROM golang\nADD gomodproxy /\nCMD ["/gomodproxy"]' > Dockerfile
   - docker build -t "sixtlabs/gomodproxy:latest" .
   - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
   - docker push "sixtlabs/gomodproxy:latest"

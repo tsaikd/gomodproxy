@@ -12,7 +12,8 @@ script:
   - go test -v ./...
 
 after_success:
-  - printf 'FROM scratch\nADD gomodproxy /\nCMD ["/gomodproxy"]' > Dockerfile
+  - mkdir gomods
+  - printf 'FROM scratch\nADD gomodproxy /\nADD gomods /\nCMD ["/gomodproxy"]' > Dockerfile
   - docker build -t "sixtlabs/gomodproxy-slim:latest" .
   - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
   - docker push "sixtlabs/gomodproxy-slim:latest"
@@ -21,7 +22,7 @@ after_success:
       docker tag sixtlabs/gomodproxy-slim:latest sixtlabs/gomodproxy-slim:$TAG;
       docker push sixtlabs/gomodproxy-slim:$TAG;
     fi
-  - printf 'FROM golang\nADD gomodproxy /\nCMD ["/gomodproxy"]' > Dockerfile
+  - printf 'FROM golang\nADD gomodproxy /\nADD gomods /\nCMD ["/gomodproxy"]' > Dockerfile
   - docker build -t "sixtlabs/gomodproxy:latest" .
   - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
   - docker push "sixtlabs/gomodproxy:latest"

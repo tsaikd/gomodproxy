@@ -132,20 +132,20 @@ func main() {
 	}
 	options = append(options, api.Log(logger))
 
-	for _, path := range vcsPaths {
-		kv := strings.SplitN(path, ":", 2)
-		if len(kv) != 2 {
-			log.Fatal("bad VCS syntax:", path)
-		}
-		options = append(options, api.CustomVCS(kv[0], kv[1]))
-	}
-
 	for _, path := range gitPaths {
 		kv := strings.SplitN(path, ":", 2)
 		if len(kv) != 2 {
 			log.Fatal("bad git path:", path)
 		}
 		options = append(options, api.Git(kv[0], kv[1]))
+	}
+
+	for _, path := range vcsPaths {
+		kv := strings.SplitN(path, ":", 2)
+		if len(kv) != 2 {
+			log.Fatal("bad VCS syntax:", path)
+		}
+		options = append(options, api.CustomVCS(kv[0], kv[1]))
 	}
 
 	options = append(options,

@@ -15,17 +15,37 @@ import (
 )
 
 type cmdVCS struct {
-	log    logger
-	module string
-	cmd    string
+	log           logger
+	module        string
+	moduleEncoded string
+	cmd           string
+}
+
+func encodeBangs(s string) string {
+	buf := []byte{}
+	for _, r := range s {
+		if 'A' <= r && r <= 'Z' {
+			buf = append(buf, '!', byte(r+'a'-'A'))
+		} else {
+			buf = append(buf, byte(r))
+		}
+	}
+	return string(buf)
 }
 
 func NewCommand(l logger, cmd string, module string) VCS {
-	return &cmdVCS{log: l, cmd: cmd, module: module}
+	return &cmdVCS{log: l, cmd: cmd, module: module, moduleEncoded: encodeBangs(module)}
 }
 
 func (c *cmdVCS) List(ctx context.Context) ([]Version, error) {
-	b, err := c.exec(ctx, "MODULE="+c.module, "ACTION=list", "VERSION=latest", "FILEPATH="+c.module+"/@v/list")
+	b, err := c.exec(ctx,
+		"MODULE="+c.module,
+		"MODULE_ENCODED="+c.moduleEncoded,
+		"ACTION=list",
+		"VERSION=latest",
+		"FILEPATH="+c.module+"/@v/list",
+		"FILEPATH_ENCODED="+c.moduleEncoded+"/@v/list",
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -37,8 +57,14 @@ func (c *cmdVCS) List(ctx context.Context) ([]Version, error) {
 }
 
 func (c *cmdVCS) Timestamp(ctx context.Context, version Version) (time.Time, error) {
-	b, err := c.exec(ctx, "MODULE="+c.module, "ACTION=timestamp", "VERSION="+version.String(),
-		"FILEPATH="+c.module+"/@v/"+version.String()+".info")
+	b, err := c.exec(ctx,
+		"MODULE="+c.module,
+		"MODULE_ENCODED="+c.moduleEncoded,
+		"ACTION=timestamp",
+		"VERSION="+version.String(),
+		"FILEPATH="+c.module+"/@v/"+version.String()+".info",
+		"FILEPATH_ENCODED="+c.moduleEncoded+"/@v/"+version.String()+".info",
+	)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -59,8 +85,14 @@ func (c *cmdVCS) Timestamp(ctx context.Context, version Version) (time.Time, err
 }
 
 func (c *cmdVCS) Zip(ctx context.Context, version Version) (io.ReadCloser, error) {
-	b, err := c.exec(ctx, "MODULE="+c.module, "ACTION=zip", "VERSION="+version.String(),
-		"FILEPATH="+c.module+"/@v/"+version.String()+".zip")
+	b, err := c.exec(ctx,
+		"MODULE="+c.module,
+		"MODULE_ENCODED="+c.moduleEncoded,
+		"ACTION=zip",
+		"VERSION="+version.String(),
+		"FILEPATH="+c.module+"/@v/"+version.String()+".zip",
+		"FILEPATH_ENCODED="+c.moduleEncoded+"/@v/"+version.String()+".zip",
+	)
 	if err != nil {
 		return nil, err
 	}

@@ -163,7 +163,11 @@ func (g *gitVCS) Zip(ctx context.Context, version Version) (io.ReadCloser, error
 		if submodule(f.Name) {
 			continue
 		}
-		if !f.Mode.IsRegular() {
+		mode, err := f.Mode.ToOSFileMode()
+		if err != nil {
+			return nil, err
+		}
+		if !mode.IsRegular() {
 			continue
 		}
 		name := f.Name

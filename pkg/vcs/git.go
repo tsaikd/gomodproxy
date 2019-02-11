@@ -235,6 +235,7 @@ func (g *gitVCS) commit(ctx context.Context, version Version) (*object.Commit, e
 	err = repo.FetchContext(ctx, &git.FetchOptions{
 		RemoteName: remoteName,
 		Auth:       auth,
+		Tags:       git.AllTags,
 	})
 	if err != nil && err != git.NoErrAlreadyUpToDate {
 		return nil, err

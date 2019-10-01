@@ -45,17 +45,41 @@ func (m *memory) Put(ctx context.Context, snapshot Snapshot) error {
 func (m *memory) Get(ctx context.Context, module string, version vcs.Version) (Snapshot, error) {
 	m.Lock()
 	defer m.Unlock()
-	return m.lookup(module, version)
+	item, err := m.lookup(module, version)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	return item.Snapshot, nil
 }
 
-func (m *memory) lookup(module string, version vcs.Version) (Snapshot, error) {
+func (m *memory) Del(ctx context.Context, module string, version vcs.Version) error {
+	m.Lock()
+	defer m.Unlock()
+	item, err := m.lookup(module, version)
+	if err != nil {
+		return err
+	}
+	if item.prev == nil {
+		m.head = item.next
+	} else {
+		item.prev.next = item.next
+	}
+	if item.next == nil {
+		m.tail = item.prev
+	} else {
+		item.next.prev = item.prev
+	}
+	return nil
+}
+
+func (m *memory) lookup(module string, version vcs.Version) (*lruItem, error) {
 	for item := m.head; item != nil; item = item.next {
 		if item.Module == module && item.Version == version {
 			m.update(item)
-			return item.Snapshot, nil
+			return item, nil
 		}
 	}
-	return Snapshot{}, errors.New("not found")
+	return nil, errors.New("not found")
 }
 
 func (m *memory) insert(item *lruItem) {

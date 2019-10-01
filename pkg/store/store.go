@@ -14,6 +14,7 @@ type logger = func(...interface{})
 type Store interface {
 	Put(ctx context.Context, snapshot Snapshot) error
 	Get(ctx context.Context, module string, version vcs.Version) (Snapshot, error)
+	Del(ctx context.Context, module string, version vcs.Version) error
 	Close() error
 }
 

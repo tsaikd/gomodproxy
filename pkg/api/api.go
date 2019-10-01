@@ -158,6 +158,10 @@ func (api *api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				version = m[2]
 			}
 			module = decodeBangs(module)
+			if r.Method == http.MethodDelete && version != "" {
+				api.delete(w, r, module, version)
+				return
+			}
 			httpRequests.Add(route.id, 1)
 			defer func() {
 				v := &expvar.Float{}
@@ -287,4 +291,13 @@ func (api *api) zip(w http.ResponseWriter, r *http.Request, module, version stri
 		return
 	}
 	io.Copy(w, bytes.NewReader(b))
+}
+
+func (api *api) delete(w http.ResponseWriter, r *http.Request, module, version string) {
+	for _, store := range api.stores {
+		if err := store.Del(r.Context(), module, vcs.Version(version)); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
 }

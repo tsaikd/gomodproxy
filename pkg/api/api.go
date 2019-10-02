@@ -183,7 +183,7 @@ func (api *api) vcs(ctx context.Context, module string) vcs.VCS {
 			return path.vcs(module)
 		}
 	}
-	return vcs.NewGit(api.log, api.gitdir, module, vcs.NoAuth())
+	return vcs.NewGoMod(api.log, module)
 }
 
 func (api *api) module(ctx context.Context, module string, version vcs.Version) ([]byte, time.Time, error) {
@@ -236,7 +236,7 @@ func (api *api) list(w http.ResponseWriter, r *http.Request, module, version str
 	if err != nil {
 		api.log("api.list", "module", module, "error", err)
 		httpErrors.Add(module, 1)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -252,7 +252,7 @@ func (api *api) info(w http.ResponseWriter, r *http.Request, module, version str
 	if err != nil {
 		api.log("api.info", "module", module, "version", version, "error", err)
 		httpErrors.Add(module, 1)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -287,7 +287,7 @@ func (api *api) zip(w http.ResponseWriter, r *http.Request, module, version stri
 	if err != nil {
 		api.log("api.zip", "module", module, "version", version, "error", err)
 		httpErrors.Add(module, 1)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 	io.Copy(w, bytes.NewReader(b))
@@ -296,7 +296,7 @@ func (api *api) zip(w http.ResponseWriter, r *http.Request, module, version stri
 func (api *api) delete(w http.ResponseWriter, r *http.Request, module, version string) {
 	for _, store := range api.stores {
 		if err := store.Del(r.Context(), module, vcs.Version(version)); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
 	}

@@ -47,4 +47,15 @@ func (d disk) Get(ctx context.Context, module string, version vcs.Version) (Snap
 	return s, err
 }
 
+func (d disk) Del(ctx context.Context, module string, version vcs.Version) error {
+	dir := string(d)
+	s := Snapshot{Module: module, Version: version}
+	err := os.Remove(filepath.Join(dir, s.Key()+".time"))
+	if err != nil {
+		return err
+	}
+	err = os.Remove(filepath.Join(dir, s.Key()+".zip"))
+	return err
+}
+
 func (d disk) Close() error { return nil }

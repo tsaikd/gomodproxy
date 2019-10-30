@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -12,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 type goVCS struct {
@@ -83,5 +86,41 @@ func (g *goVCS) download(ctx context.Context, version string) error {
 
 func (g *goVCS) file(name string) ([]byte, error) {
 	path := filepath.Join(g.dir, "pkg", "mod", "cache", "download", g.module, "@v", name)
-	return ioutil.ReadFile(path)
+	data, err := ioutil.ReadFile(path)
+	if err != nil && errors.Is(err, os.ErrNotExist) {
+		if module, errMod := encodeString(g.module); errMod == nil {
+			path = filepath.Join(g.dir, "pkg", "mod", "cache", "download", module, "@v", name)
+			return ioutil.ReadFile(path)
+		}
+	}
+	return data, err
+}
+
+// Ripped from cmd/go
+func encodeString(s string) (encoding string, err error) {
+	haveUpper := false
+	for _, r := range s {
+		if r == '!' || r >= utf8.RuneSelf {
+			// This should be disallowed by CheckPath, but diagnose anyway.
+			// The correctness of the encoding loop below depends on it.
+			return "", fmt.Errorf("internal error: inconsistency in EncodePath")
+		}
+		if 'A' <= r && r <= 'Z' {
+			haveUpper = true
+		}
+	}
+
+	if !haveUpper {
+		return s, nil
+	}
+
+	var buf []byte
+	for _, r := range s {
+		if 'A' <= r && r <= 'Z' {
+			buf = append(buf, '!', byte(r+'a'-'A'))
+		} else {
+			buf = append(buf, byte(r))
+		}
+	}
+	return string(buf), nil
 }

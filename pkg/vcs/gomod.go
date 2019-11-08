@@ -82,6 +82,6 @@ func (g *goVCS) download(ctx context.Context, version string) error {
 }
 
 func (g *goVCS) file(name string) ([]byte, error) {
-	path := filepath.Join(g.dir, "pkg", "mod", "cache", "download", g.module, "@v", name)
+	path := filepath.Join(g.dir, "pkg", "mod", "cache", "download", encodeBangs(g.module), "@v", name)
 	return ioutil.ReadFile(path)
 }
